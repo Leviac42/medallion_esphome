@@ -89,13 +89,6 @@ i2c:
     scan: true
     frequency: 400kHz
 
-# SPI Bus for SD Card (HSPI)
-spi:
-  - id: sd_spi
-    clk_pin: GPIO2
-    mosi_pin: GPIO1
-    miso_pin: GPIO3
-
 # Custom Components - loaded from local custom_components directory
 external_components:
   - source:

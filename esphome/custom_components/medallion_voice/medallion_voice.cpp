@@ -62,8 +62,9 @@ bool MedallionVoiceComponent::init_sd_card_() {
   this->sd_cs_pin_->digital_write(true);
 
   // Initialize SPI for SD card (HSPI)
-  // Pins are configured in the main YAML, we just use the CS
-  this->sd_spi_.begin();
+  // Explicitly attach pins to avoid conflicts on ESP32-S3
+  // SCK=GPIO2, MISO=GPIO3, MOSI=GPIO1 (see medallion.yaml)
+  this->sd_spi_.begin(/*SCK=*/2, /*MISO=*/3, /*MOSI=*/1, /*SS=*/cs_pin);
   delay(200);
 
   // Try different SPI speeds
@@ -71,9 +72,11 @@ bool MedallionVoiceComponent::init_sd_card_() {
   SdSpiConfig cfg(cs_pin, SHARED_SPI, SD_SCK_MHZ(0.4), &this->sd_spi_);
   
   if (!this->sd_.begin(cfg)) {
+    yield();
     ESP_LOGD(TAG, "SHARED_SPI failed, trying DEDICATED_SPI...");
     SdSpiConfig cfg2(cs_pin, DEDICATED_SPI, SD_SCK_MHZ(0.4), &this->sd_spi_);
     if (!this->sd_.begin(cfg2)) {
+      yield();
       ESP_LOGD(TAG, "400kHz failed, trying 250kHz...");
       SdSpiConfig cfg3(cs_pin, DEDICATED_SPI, SD_SCK_MHZ(0.25), &this->sd_spi_);
       if (!this->sd_.begin(cfg3)) {
