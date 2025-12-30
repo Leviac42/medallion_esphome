@@ -1,0 +1,249 @@
+# ESPHome configuration for Medallion Voice Recorder
+# Waveshare ESP32-S3-Touch-AMOLED-1.75-B
+#
+# This configuration enables OTA updates from Home Assistant
+
+substitutions:
+  name: medallion
+  friendly_name: Medallion Voice Recorder
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+    board_build.f_cpu: 240000000L
+    build_flags:
+      - -DBOARD_HAS_PSRAM
+      - -DARDUINO_USB_MODE=1
+      - -DARDUINO_USB_CDC_ON_BOOT=1
+  on_boot:
+    priority: 600
+    then:
+      - lambda: |-
+          ESP_LOGI("medallion", "Medallion Voice Recorder starting...");
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  flash_size: 16MB
+  framework:
+    type: arduino
+    version: 2.0.14
+    platform_version: 6.4.0
+
+# Enable PSRAM
+psram:
+  mode: octal
+  speed: 80MHz
+
+# Enable logging
+logger:
+  level: DEBUG
+  baud_rate: 115200
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+  services:
+    - service: start_recording
+      then:
+        - medallion_voice.start_recording
+    - service: stop_recording
+      then:
+        - medallion_voice.stop_recording
+    - service: upload_recording
+      then:
+        - medallion_voice.upload
+
+# Enable OTA updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# WiFi Configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "${name} Fallback Hotspot"
+    password: !secret fallback_password
+
+captive_portal:
+
+# Web Server for local access
+web_server:
+  port: 80
+  auth:
+    username: admin
+    password: !secret web_password
+
+# I2C Bus for PMIC, Touch, IO Expander, Audio Codec
+i2c:
+  - id: bus_main
+    sda: GPIO15
+    scl: GPIO14
+    scan: true
+    frequency: 400kHz
+
+# SPI Bus for SD Card (HSPI)
+spi:
+  - id: sd_spi
+    clk_pin: GPIO2
+    mosi_pin: GPIO1
+    miso_pin: GPIO3
+
+# Custom Components - loaded from local custom_components directory
+external_components:
+  - source:
+      type: local
+      path: custom_components
+
+# AXP2101 Power Management IC
+axp2101:
+  id: pmu
+  i2c_id: bus_main
+  address: 0x34
+  irq_pin: GPIO11
+  # Power rail configuration based on Waveshare demo
+  dc1_voltage: 3.3V  # Main 3V3 rail
+  aldo1_voltage: 1.8V  # CAM DVDD / Logic
+  aldo2_voltage: 2.8V  # CAM DVDD / VCI
+  aldo3_voltage: 3.3V  # PIR VDD / Touch
+  aldo4_voltage: 3.0V  # CAM AVDD / SD
+  bldo1_voltage: 3.3V  # OLED VDD
+  bldo2_voltage: 3.3V  # MIC VDD / Audio
+
+# CO5300 QSPI AMOLED Display (466x466)
+co5300_qspi:
+  id: display_main
+  cs_pin: GPIO12
+  sclk_pin: GPIO38
+  data0_pin: GPIO4
+  data1_pin: GPIO5
+  data2_pin: GPIO6
+  data3_pin: GPIO7
+  reset_pin: GPIO39
+  width: 466
+  height: 466
+  brightness: 255
+
+# CST92xx Capacitive Touch Controller
+cst92xx:
+  id: touch_main
+  i2c_id: bus_main
+  address: 0x5A
+  interrupt_pin: GPIO11
+  reset_pin: GPIO40
+  width: 466
+  height: 466
+  mirror_x: true
+  mirror_y: true
+
+# ES8311 Audio Codec with I2S
+es8311:
+  id: audio_codec
+  i2c_id: bus_main
+  address: 0x18
+  pa_enable_pin: GPIO46
+  # I2S Configuration (use pin numbers, not GPIO strings)
+  i2s_mclk_pin: 42
+  i2s_bclk_pin: 9
+  i2s_ws_pin: 45
+  i2s_dout_pin: 10
+  i2s_din_pin: 8
+  sample_rate: 16000
+  bits_per_sample: 16
+  mic_gain: 30dB
+
+# Medallion Voice Recording Component
+medallion_voice:
+  id: voice_recorder
+  audio_codec_id: audio_codec
+  sd_cs_pin: GPIO41
+  upload_url: !secret upload_url
+
+# Binary Sensors for recording state
+binary_sensor:
+  - platform: template
+    name: "${friendly_name} Recording"
+    id: is_recording
+    lambda: |-
+      return id(voice_recorder).is_recording();
+
+# Sensors
+sensor:
+  # Battery voltage from PMIC
+  - platform: axp2101
+    axp2101_id: pmu
+    battery_voltage:
+      name: "${friendly_name} Battery Voltage"
+    battery_level:
+      name: "${friendly_name} Battery Level"
+    vbus_voltage:
+      name: "${friendly_name} VBUS Voltage"
+
+  # WiFi signal strength
+  - platform: wifi_signal
+    name: "${friendly_name} WiFi Signal"
+    update_interval: 60s
+
+  # Uptime
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+
+# Text Sensors
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name} IP Address"
+    ssid:
+      name: "${friendly_name} Connected SSID"
+
+  - platform: version
+    name: "${friendly_name} ESPHome Version"
+
+  - platform: template
+    name: "${friendly_name} Status"
+    id: recording_status
+    lambda: |-
+      return {id(voice_recorder).get_status()};
+    update_interval: 1s
+
+# Buttons for Home Assistant
+button:
+  - platform: restart
+    name: "${friendly_name} Restart"
+
+  - platform: template
+    name: "${friendly_name} Start Recording"
+    on_press:
+      - medallion_voice.start_recording
+
+  - platform: template
+    name: "${friendly_name} Stop Recording"
+    on_press:
+      - medallion_voice.stop_recording
+
+  - platform: template
+    name: "${friendly_name} Upload Recording"
+    on_press:
+      - medallion_voice.upload
+
+# Number for display brightness
+number:
+  - platform: template
+    name: "${friendly_name} Display Brightness"
+    id: display_brightness
+    min_value: 0
+    max_value: 255
+    step: 1
+    initial_value: 255
+    optimistic: true
+    set_action:
+      - lambda: |-
+          id(display_main).set_brightness((uint8_t)x);

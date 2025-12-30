@@ -1,0 +1,21 @@
+# ESPHome secrets - DO NOT COMMIT
+secrets.yaml
+
+# ESPHome build output
+.esphome/
+
+# PlatformIO build artifacts (if using esphome compile locally)
+.pioenvs/
+.piolibdeps/
+.pio/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
