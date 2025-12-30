@@ -2,6 +2,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/core/hal.h"
+#include "esphome/core/gpio.h"
 #include "esphome/core/automation.h"
 #include "esphome/components/es8311/es8311.h"
 #include <SPI.h>
@@ -19,7 +20,7 @@ class MedallionVoiceComponent : public Component {
   float get_setup_priority() const override { return setup_priority::LATE; }
 
   void set_audio_codec(es8311::ES8311Component *codec) { this->audio_codec_ = codec; }
-  void set_sd_cs_pin(GPIOPin *pin) { this->sd_cs_pin_ = pin; }
+  void set_sd_cs_pin(InternalGPIOPin *pin) { this->sd_cs_pin_ = pin; }
   void set_upload_url(const std::string &url) { this->upload_url_ = url; }
 
   // Recording control
@@ -41,7 +42,7 @@ class MedallionVoiceComponent : public Component {
   bool parse_url_(const std::string &url, std::string &host, uint16_t &port, std::string &path);
 
   es8311::ES8311Component *audio_codec_{nullptr};
-  GPIOPin *sd_cs_pin_{nullptr};
+  InternalGPIOPin *sd_cs_pin_{nullptr};
   std::string upload_url_;
 
   // SD card

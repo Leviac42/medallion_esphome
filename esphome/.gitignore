@@ -19,3 +19,8 @@ secrets.yaml
 # OS
 .DS_Store
 Thumbs.db
+
+# Virtual environments
+venv/
+env/
+Scripts/

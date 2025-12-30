@@ -52,7 +52,7 @@ void CO5300QSPIComponent::setup() {
   g_gfx->fillScreen(BLACK);
 
   // Set brightness
-  g_gfx->Display_Brightness(this->brightness_);
+  ((Arduino_CO5300 *)g_gfx)->setBrightness(this->brightness_);
 
   // Draw startup test pattern
   int16_t third = this->height_ / 3;
@@ -117,7 +117,7 @@ void CO5300QSPIComponent::draw_pixel(int16_t x, int16_t y, uint16_t color) {
 void CO5300QSPIComponent::set_brightness(uint8_t value) {
   this->brightness_ = value;
   if (this->initialized_ && g_gfx != nullptr) {
-    g_gfx->Display_Brightness(value);
+    ((Arduino_CO5300 *)g_gfx)->setBrightness(value);
   }
 }
 

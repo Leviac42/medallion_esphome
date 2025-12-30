@@ -30,8 +30,7 @@ esp32:
   flash_size: 16MB
   framework:
     type: arduino
-    version: 2.0.14
-    platform_version: 6.4.0
+    version: 3.2.1
 
 # Enable PSRAM
 psram:
@@ -137,7 +136,7 @@ cst92xx:
   id: touch_main
   i2c_id: bus_main
   address: 0x5A
-  interrupt_pin: GPIO11
+  interrupt_pin: GPIO21
   reset_pin: GPIO40
   width: 466
   height: 466
